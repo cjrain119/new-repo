@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Gemini Tools Demo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin: 24px; max-width: 900px; }
+    h1 { margin: 0 0 16px; }
+    .row { display: grid; gap: 8px; margin: 12px 0; }
+    textarea, input, button, select { font: inherit; padding: 10px; border-radius: 10px; border: 1px solid #8884; }
+    textarea { min-height: 140px; }
+    button { cursor: pointer; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    pre { background: #0000000a; padding: 12px; border-radius: 10px; overflow: auto; max-height: 420px;}
+    .muted { opacity: .7; font-size: .9em; }
+    .ok { color: #0a7f2e; }
+    .err { color: #c73838; }
+    .chips { display:flex; gap:8px; flex-wrap: wrap; }
+    .chip { padding:6px 10px; border-radius: 999px; border:1px solid #8884; cursor:pointer; }
+    .chip:hover { background:#8881; }
+  </style>
+</head>
+<body>
+  <h1>Gemini 2.5 Flash — Tools Demo</h1>
+
+  <!-- ====== CONFIG (edit these two lines) ====== -->
+  <script>
+    const PROJECT_REF  = "ypqwcjomnwcoddijvrxl";
+    const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwcXdjam9tbndjb2RkaWp2cnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5NzAyNzAsImV4cCI6MjA3NTU0NjI3MH0.c2UGplGI6s3ZghOkGqOA3BJumli-vOxPuoKTpEKmjPA";
+    const FUNCTION_SLUG = "gemini-test";
+
+  </script>
+  <!-- ========================================== -->
+
+  <div class="row">
+    <label>Message</label>
+    <textarea id="msg" placeholder="Ask something… e.g. 'Find pool mechanical contracts in Utah with NAICS 238990'"></textarea>
+  </div>
+
+  <div class="grid">
+    <div class="row">
+      <label>Idempotency Key <span class="muted">(auto if blank)</span></label>
+      <input id="idem" placeholder="optional-123" />
+    </div>
+    <div class="row">
+      <label>Endpoint</label>
+      <input id="url" readonly />
+      <div class="muted">Using the <b>project proxy</b> URL (needs apikey & bearer headers).</div>
+    </div>
+  </div>
+
+  <div class="chips">
+    <span class="chip" data-t="hello">Hello</span>
+    <span class="chip" data-t="search">Search (Utah / 238990)</span>
+    <span class="chip" data-t="extract">Extractor (sample text)</span>
+  </div>
+
+  <div class="row">
+    <button id="send">Send</button>
+    <span id="status" class="muted"></span>
+  </div>
+
+  <div class="grid">
+    <div>
+      <h3>Response</h3>
+      <pre id="out">—</pre>
+    </div>
+    <div>
+      <h3>Raw fetch details</h3>
+      <pre id="meta">—</pre>
+    </div>
+  </div>
+
+<script>
+  // Build proxy URL
+  const URL_BASE = `https://${PROJECT_REF}.supabase.co/functions/v1/${FUNCTION_SLUG}`;
+  const urlEl = document.getElementById('url');
+  urlEl.value = URL_BASE;
+
+  const $ = (id) => document.getElementById(id);
+  const msg = $('msg'), idem = $('idem'), out = $('out'), meta = $('meta'), statusEl = $('status');
+
+  // Helpers
+  const genIdem = () => `ui-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
+  const setStatus = (txt, cls='') => { statusEl.textContent = txt; statusEl.className = 'muted ' + cls; };
+  const pretty = (obj) => JSON.stringify(obj, null, 2);
+
+  // Presets
+  const SAMPLE_TEXT = `Solicitation: FA1234-25-R-0001
+Title: Pool Mechanical Upgrade
+NAICS: 238220
+Offers due: 2025-10-30
+Place of Performance: Ogden, UT
+Scope: Replace chillers, pumps, piping; electrical panels and controls; pool filtration.`;
+
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const t = chip.dataset.t;
+      if (t === 'hello') msg.value = 'Say hi in one short sentence.';
+      if (t === 'search') msg.value = 'Find pool mechanical contracts in Utah with NAICS 238990';
+      if (t === 'extract') msg.value = `Extract solicitation from this text:\n\n${SAMPLE_TEXT}`;
+    });
+  });
+
+  $('send').addEventListener('click', async () => {
+    const body = {
+      message: msg.value.trim(),
+      idempotencyKey: (idem.value || genIdem())
+    };
+    idem.value = body.idempotencyKey;
+
+    if (!body.message) { alert('Enter a message first.'); return; }
+
+    setStatus('Sending…');
+    out.textContent = '…';
+    meta.textContent = '…';
+
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': ANON_KEY,
+      'Authorization': `Bearer ${ANON_KEY}`
+    };
+
+    const started = performance.now();
+    let resp, text;
+    try {
+      resp = await fetch(URL_BASE, { method:'POST', headers, body: JSON.stringify(body) });
+      text = await resp.text();
+    } catch (e) {
+      setStatus('Network error', 'err');
+      out.textContent = String(e);
+      return;
+    }
+
+    const ms = Math.round(performance.now() - started);
+    setStatus(`${resp.status} ${resp.statusText} • ${ms} ms`, resp.ok ? 'ok' : 'err');
+
+    // pretty-print if JSON
+    try {
+      const json = JSON.parse(text);
+      out.textContent = pretty(json);
+    } catch {
+      out.textContent = text || '(empty body)';
+    }
+
+    meta.textContent = pretty({
+      url: URL_BASE,
+      request: body,
+      headers: { apikey: '<anon>', Authorization: 'Bearer <anon>' },
+      timingMs: ms
+    });
+  });
+</script>
+</body>
+</html>
