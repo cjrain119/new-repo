@@ -25,14 +25,13 @@
 <body>
   <h1>Gemini 2.5 Flash — Tools Demo</h1>
 
-  <!-- ====== CONFIG (edit these two lines) ====== -->
+  <!-- ====== CONFIG (edit these) ====== -->
   <script>
-    const PROJECT_REF  = "ypqwcjomnwcoddijvrxl";
-    const ANON_KEY     = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwcXdjam9tbndjb2RkaWp2cnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5NzAyNzAsImV4cCI6MjA3NTU0NjI3MH0.c2UGplGI6s3ZghOkGqOA3BJumli-vOxPuoKTpEKmjPA";
+    const PROJECT_REF   = "ypqwcjomnwcoddijvrxl";
+    const ANON_KEY      = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlwcXdjam9tbndjb2RkaWp2cnhsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk5NzAyNzAsImV4cCI6MjA3NTU0NjI3MH0.c2UGplGI6s3ZghOkGqOA3BJumli-vOxPuoKTpEKmjPA";
     const FUNCTION_SLUG = "gemini-test";
-
   </script>
-  <!-- ========================================== -->
+  <!-- ================================= -->
 
   <div class="row">
     <label>Message</label>
@@ -73,21 +72,25 @@
     </div>
   </div>
 
-<script>
-  // Build proxy URL
-  const URL_BASE = `https://${PROJECT_REF}.supabase.co/functions/v1/${FUNCTION_SLUG}`;
-  const urlEl = document.getElementById('url');
-  urlEl.value = URL_BASE;
+  <div class="row">
+    <h3>History</h3>
+    <button id="refreshHistory">Refresh</button>
+    <pre id="history">—</pre>
+  </div>
 
+<script>
+  // ---------- setup ----------
+  const URL_BASE = `https://${PROJECT_REF}.supabase.co/functions/v1/${FUNCTION_SLUG}`;
   const $ = (id) => document.getElementById(id);
+
+  const urlEl = $('url'); urlEl.value = URL_BASE;
   const msg = $('msg'), idem = $('idem'), out = $('out'), meta = $('meta'), statusEl = $('status');
 
-  // Helpers
   const genIdem = () => `ui-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,7)}`;
   const setStatus = (txt, cls='') => { statusEl.textContent = txt; statusEl.className = 'muted ' + cls; };
   const pretty = (obj) => JSON.stringify(obj, null, 2);
 
-  // Presets
+  // ---------- presets ----------
   const SAMPLE_TEXT = `Solicitation: FA1234-25-R-0001
 Title: Pool Mechanical Upgrade
 NAICS: 238220
@@ -98,12 +101,41 @@ Scope: Replace chillers, pumps, piping; electrical panels and controls; pool fil
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const t = chip.dataset.t;
-      if (t === 'hello') msg.value = 'Say hi in one short sentence.';
+      if (t === 'hello')  msg.value = 'Say hi in one short sentence.';
       if (t === 'search') msg.value = 'Find pool mechanical contracts in Utah with NAICS 238990';
       if (t === 'extract') msg.value = `Extract solicitation from this text:\n\n${SAMPLE_TEXT}`;
     });
   });
 
+  // ---------- history (RPC) ----------
+  async function loadHistory(limit = 25) {
+    const url = `https://${PROJECT_REF}.supabase.co/rest/v1/rpc/get_ai_logs`;
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': ANON_KEY,
+      'Authorization': `Bearer ${ANON_KEY}`
+    };
+    try {
+      const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ limit_rows: limit }) });
+      const data = await res.json();
+      if (!Array.isArray(data)) {
+        $('history').textContent = 'No history or RPC error: ' + JSON.stringify(data);
+        return;
+      }
+      const lines = data.map(row => {
+        const t = new Date(row.created_at).toLocaleString();
+        const ok = row.ok ? '✅' : '❌';
+        const tool = row.tool_called ? ` • tool=${row.tool_called}` : '';
+        return `[${t}] ${ok}${tool} • idem=${row.idempotency_key}\n  msg: ${row.message}\n  resp: ${String(row.response_text || row.error_text || '').slice(0, 200)}\n`;
+      });
+      $('history').textContent = lines.join('\n');
+    } catch (e) {
+      $('history').textContent = 'History fetch failed: ' + e;
+    }
+  }
+  $('refreshHistory').addEventListener('click', () => loadHistory(25));
+
+  // ---------- send handler ----------
   $('send').addEventListener('click', async () => {
     const body = {
       message: msg.value.trim(),
@@ -137,7 +169,6 @@ Scope: Replace chillers, pumps, piping; electrical panels and controls; pool fil
     const ms = Math.round(performance.now() - started);
     setStatus(`${resp.status} ${resp.statusText} • ${ms} ms`, resp.ok ? 'ok' : 'err');
 
-    // pretty-print if JSON
     try {
       const json = JSON.parse(text);
       out.textContent = pretty(json);
@@ -151,7 +182,12 @@ Scope: Replace chillers, pumps, piping; electrical panels and controls; pool fil
       headers: { apikey: '<anon>', Authorization: 'Bearer <anon>' },
       timingMs: ms
     });
+
+    if (resp.ok) loadHistory(25);   // <-- now in JS, not in HTML
   });
+
+  // initial history load
+  loadHistory(25);
 </script>
 </body>
 </html>

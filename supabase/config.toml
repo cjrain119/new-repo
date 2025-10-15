@@ -1,0 +1,66 @@
+
+[functions.ai-hello]
+enabled = true
+verify_jwt = true
+import_map = "./functions/ai-hello/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/ai-hello/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/ai-hello/*.html" ]
+
+[functions.smooth-service]
+enabled = true
+verify_jwt = true
+import_map = "./functions/smooth-service/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/smooth-service/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/smooth-service/*.html" ]
+
+[functions.gemini_test]
+enabled = true
+verify_jwt = true
+import_map = "./functions/gemini_test/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/gemini_test/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/gemini_test/*.html" ]
+
+[functions.New_function]
+enabled = true
+verify_jwt = true
+import_map = "./functions/New_function/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/New_function/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/New_function/*.html" ]
+
+[functions.samgov-search]
+enabled = true
+verify_jwt = true
+import_map = "./functions/samgov-search/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/samgov-search/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/samgov-search/*.html" ]
+
+[functions.samgov_contracts]
+enabled = true
+verify_jwt = true
+import_map = "./functions/samgov_contracts/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/samgov_contracts/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/samgov_contracts/*.html" ]
